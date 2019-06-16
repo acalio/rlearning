@@ -1,12 +1,13 @@
 import numpy as np
 from utils.state_transformer import StateTransformer
+from agent.policy import Policy
 from abc import ABC, abstractmethod
 from copy import copy
 
 class Agent(ABC):
     '''Base class for every learning agent'''
 
-    def __init__(self, env, discount_factor, transformer):
+    def __init__(self, env, discount_factor, transformer, policy):
         """ Constructor         
         Parameters
         -----------
@@ -16,6 +17,7 @@ class Agent(ABC):
         self.env = env
         self.discount_factor = discount_factor
         self.transformer = transformer
+        self.policy = policy
 
     @abstractmethod
     def learn(self, episodes):
@@ -77,3 +79,4 @@ class Agent(ABC):
                 states[i], actions[i], rewards[i] = o,a,r
             return states, actions, rewards
         return episode
+

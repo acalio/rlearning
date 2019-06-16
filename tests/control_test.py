@@ -25,11 +25,4 @@ class Test(unittest.TestCase):
         for k,v in V.items():
             state = transf.invtransform(k) - 1
             V_matrix[tuple(state.astype(int))] = v
-        #print(V)
         plot_V(V_matrix, dealer, player)
-        print(info['actions'])
-        # reward_per_episode = np.cumsum(info['rpe'])
-        # plt.plot(range(episodes), reward_per_episode)
-        # plt.show()
-        # pickle.dumpV_matrix(V_matrix, 'v_matrix.pickle')
-        # pickle.dump(reward_per_episode, 'rpe.pickle')

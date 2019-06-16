@@ -9,16 +9,11 @@ class MCControlAgent(Agent):
     On-Policy first visit MC control (for \eps - soft policies)
     """
 
-    def __init__(self, eps, env, discount_factor, transformer, policy = "eps-greedy"):
+    def __init__(self, env, discount_factor, transformer, policy):
         super().__init__(env, discount_factor, transformer)
         
         self.Q = defaultdict(self.__callable_zeros)
         self.state_action_visit = defaultdict(self.__callable_zeros)
-        self.eps = eps 
-        if policy == 'eps-greedy':
-            self.__select = self.__eps_greedy_selection
-        else:
-            self.__select = self.__eps_soft_selection
 
 
     def learn(self, episodes):
@@ -57,7 +52,7 @@ class MCControlAgent(Agent):
 
 
     def select_action(self, state):
-        return self.__select(state)
+        return self.policy(state, self.Q)
 
 
     def get_state_value_function(self, **kwargs):
@@ -98,23 +93,23 @@ class MCControlAgent(Agent):
         return np.zeros(self.env.action_space.n)
 
 
-    def __eps_soft_selection(self, state):
-        ''' eps-soft policy'''
-        num_actions = self.env.action_space.n
-        actions = self.env.actions
-        max_action = np.argmax(self.Q[state])
-        return np.random.choice(actions,\
-            p=np.where(actions==max_action, 
-                       1.0-self.eps+self.eps/num_actions, # prob. greedy action
-                       self.eps/num_actions))             # prob. not greedy action
+    # def __eps_soft_selection(self, state):
+    #     ''' eps-soft policy'''
+    #     num_actions = self.env.action_space.n
+    #     actions = self.env.actions
+    #     max_action = np.argmax(self.Q[state])
+    #     return np.random.choice(actions,\
+    #         p=np.where(actions==max_action, 
+    #                    1.0-self.eps+self.eps/num_actions, # prob. greedy action
+    #                    self.eps/num_actions))             # prob. not greedy action
 
 
-    def __eps_greedy_selection(self, state):
-        '''eps-greedy selection'''
-        if np.random.rand() <= self.eps:
-            return self.env.action_space.sample()
-        else:
-            return np.argmax(self.Q[state])
+    # def __eps_greedy_selection(self, state):
+    #     '''eps-greedy selection'''
+    #     if np.random.rand() <= self.eps:
+    #         return self.env.action_space.sample()
+    #     else:
+    #         return np.argmax(self.Q[state])
 
 
     def __is_first_visit(self, state, previous_states):

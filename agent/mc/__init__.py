@@ -40,7 +40,7 @@ class Agent:
         pass
 
     @abstractmethod
-    def get_state_value_function(self):
+    def get_state_value_function(self, **kwargs):
         """Return the value function"""
         pass
 

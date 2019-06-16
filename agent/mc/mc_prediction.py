@@ -1,5 +1,5 @@
 from agent import Agent
-from utils import EnvFactory, RandomGenerator, plot_V, printProgressBar
+from utils import EnvFactory, RandomGenerator, printProgressBar
 import numpy as np
 from collections import defaultdict
 
@@ -34,17 +34,23 @@ class MCPredictionAgent(Agent):
             greturn = 0
             for i in range(len(states)):
                 greturn = self.discount_factor*greturn + rewards[-i-1]
-                if states[-i-1] not in states[:-i-1]:
+                if self.__is_first_visit(states[-i-1], states[:-i-1]):
                     state = self.transformer.transform(states[-i-1])
                     self.state_visits[state] += 1
                     self.V[state] += (greturn-self.V[state])/self.state_visits[state]
                     
 
-
-    def get_state_value_function(self):
+    def get_state_value_function(self, **kwargs):
         return self.V
+
 
     def select_action(self, state):
         return self.env.action_space.sample()
 
-    
+
+    def __is_first_visit(self, state, previous_states):
+        '''check if the agent is in state for the first time'''
+        for s in previous_states:
+            if np.all(state==s):
+                return False
+        return True

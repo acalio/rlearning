@@ -72,7 +72,7 @@ class Agent(ABC):
             observation = copy(next_observation)
     
         if as_separate_array:
-            states = np.tile(np.zeros(state_dim), [len(episode),1])
+            states = np.tile(np.zeros(state_dim, dtype=self.env.observation_space.dtype), [len(episode),1])
             actions = np.zeros(len(episode))
             rewards = np.zeros(len(episode))
             for i,(o,a,r) in enumerate(episode):

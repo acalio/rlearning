@@ -26,7 +26,6 @@ def plot_V(V, dealer_range, player_range, max_axis=2, save=None, fig_idx=0):
     def create_surf_plot(X, Y, Z, fig_idx=1):
         fig = plt.figure(fig_idx)
         ax = fig.add_subplot(111, projection="3d")
-
         surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
                             linewidth=0, antialiased=False)
         return surf

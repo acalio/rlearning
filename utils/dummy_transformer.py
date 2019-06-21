@@ -3,9 +3,11 @@ from utils.state_transformer import StateTransformer, abstractmethod
 class DummyTransformer(StateTransformer):
 
     def __init__(self):
-        super(self, DummyTransformer).__init__()
+       super().__init__()
 
     def transform(self, obj, save_transformation=True):
-        return obj
+        tuple_obj = tuple(obj)
+        self.inv_transformation[tuple_obj] = tuple_obj
+        return tuple_obj
     
 

@@ -1,10 +1,10 @@
-from agent import Agent
+from agent import PredictionAgent
 from utils import EnvFactory, RandomGenerator, printProgressBar
 import numpy as np
 from collections import defaultdict
 
 
-class MCPredictionAgent(Agent):
+class MCPredictionAgent(PredictionAgent):
     """
     First-Visit MC prediction  
     """
@@ -14,8 +14,7 @@ class MCPredictionAgent(Agent):
 
         # initialize data structures
         self.state_shape = self.env.observation_space.shape
-        self.V = defaultdict(float) #np.zeros(state_range*state_range).reshape(state_range, state_range)
-        self.state_visits = defaultdict(float) #np.zeros_like(V)
+        self.state_visits = defaultdict(float)
 
 
     def learn(self, episodes):
@@ -39,10 +38,6 @@ class MCPredictionAgent(Agent):
                     self.state_visits[state] += 1
                     self.V[state] += (greturn-self.V[state])/self.state_visits[state]
                     
-
-    def get_state_value_function(self, **kwargs):
-        return self.V
-
 
     def select_action(self, state):
         return self.env.action_space.sample()

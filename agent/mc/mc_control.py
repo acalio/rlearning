@@ -1,21 +1,19 @@
-from agent import Agent
+from agent import ControlAgent
 import numpy as np
 from collections import defaultdict
 from utils import printProgressBar
 
 
-class MCControlAgent(Agent):
+class MCControlAgent(ControlAgent):
     """
     On-Policy first visit MC control (for \eps - soft policies)
     """
 
     def __init__(self, env, discount_factor, transformer, policy, every_visit=False):
         super().__init__(env, discount_factor, transformer, policy)
-        
-        self.Q = defaultdict(self._callable_zeros)
-        self.state_action_visit = defaultdict(self._callable_zeros)
+        zeros = lambda : np.zeros(self.env.action_space.n)
+        self.state_action_visit = defaultdict(zeros)
         self.every_visit = every_visit
-        self.state_visit = defaultdict(int)
 
     def learn(self, episodes):
         """
@@ -32,7 +30,7 @@ class MCControlAgent(Agent):
 
         for e in range(episodes):
             if (e+1)%100 == 0:
-                pass #printProgressBar(e+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
+                printProgressBar(e+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
             
             states, actions, rewards = self.generate_episode(as_separate_array=True,\
                 state_dim=self.env.observation_space.shape)
@@ -45,7 +43,6 @@ class MCControlAgent(Agent):
                     action = int(actions[-i-1])
                     self.state_action_visit[state][action] += 1
                     self.Q[state][action] += 1 / self.state_action_visit[state][action] * (greturn - self.Q[state][action])
-                    self.state_visit[state] += 1
 
             #save the cumulative reward
             info['rpe'].append(greturn)
@@ -54,47 +51,7 @@ class MCControlAgent(Agent):
 
 
     def select_action(self, state):
-        visit = self.state_visit[state]
-        self.policy.update(state_visit = visit)
-        return self.policy(state, self.Q)
-
-
-    def get_state_value_function(self, **kwargs):
-        """
-        Get the state value from the Q-values derived
-        from the learning process. The Vs can be either
-        selected by taking the expectation or the max
-
-        Parameters
-        ----------
-            optimality : boolean,  true if for each state-action pair
-                         you want to select the maximal value
-        
-        Returns
-        -------
-            State values for every state encounter in the learning phase
-        """
-        try:
-            optimality = kwargs['optimality']
-        except KeyError:
-            optimality = False
-
-        V = defaultdict(self._callable_zeros)
-        num_actions = self.env.action_space.n
-        for k, action_array in self.Q.items():
-            if optimality:
-                V[k] = np.max(action_array)
-            else:
-                max_action = np.argmax(action_array)
-                probs = self.policy.get_actions_probabilities(k, Q)
-                mean = np.dot(action_array, probs)
-                V[k] = mean
-        return V
-
-
-    def _callable_zeros(self):
-        '''Utility function for reating an array of all zero'''
-        return np.zeros(self.env.action_space.n)
+        return self.policy(state, self.Q[state])
 
 
     def _is_first_visit(self, state, previous_states):
@@ -113,6 +70,7 @@ class OffPolicyMCControlAgent(MCControlAgent):
 
     def __init__(self, env, discount_factor, transformer, target_policy, behavorial_policy, every_visit = False, ratio = "regular"):
         """Constructor
+        
         Parameters
         ----------
             env : an environment
@@ -130,8 +88,9 @@ class OffPolicyMCControlAgent(MCControlAgent):
         self.regular_is = ratio == "regular"
         
         # init data structure
-        self.Q = defaultdict(self._callable_zeros)
-        self.state_action_visit = defaultdict(self._callable_zeros)
+        zeros = lambda : np.zeros(self.env.action_space.n)
+        self.Q = defaultdict(zeros)
+        self.state_action_visit = defaultdict(zeros)
         
 
     def learn(self, episodes):
@@ -161,8 +120,9 @@ class OffPolicyMCControlAgent(MCControlAgent):
 
                 #scale the return with the importance sampling ratio
                 greturn = self.discount_factor*greturn + rewards[-i-1]
-                is_ratio *= self.policy.get_actions_probabilities(state_transformed, self.Q)[action]\
-                                / self.b_policy.get_actions_probabilities(state_transformed, self.Q)[action]
+
+                is_ratio *= self.policy.get_actions_probabilities(state_transformed, self.Q[state_transformed])[action]\
+                                / self.b_policy.get_actions_probabilities(state_transformed, self.Q[state_transformed])[action]
 
                 if self.every_visit or self._is_first_visit(states[-i-1], states[:-i-1]):
                     scaled_greturn = is_ratio * greturn
@@ -177,4 +137,4 @@ class OffPolicyMCControlAgent(MCControlAgent):
 
             
     def select_action(self, state):
-        return self.b_policy(state, self.Q)
+        return self.b_policy(state, self.Q[state])

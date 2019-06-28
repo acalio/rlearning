@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod 
+from collections import defaultdict
 
 class Policy(ABC):
     """
@@ -16,14 +17,11 @@ class Policy(ABC):
         self.actions = actions
     
     @abstractmethod
-    def __call__(self, state, Q):
+    def __call__(self, state, action_values):
         pass
 
     @abstractmethod
-    def get_actions_probabilities(self, state, Q):
-        pass
-
-    def update(self, **kwargs):
+    def get_actions_probabilities(self, action_values):
         pass
 
 class EpsSoft(Policy):
@@ -32,12 +30,12 @@ class EpsSoft(Policy):
         self.num_actions = len(actions)
         self.eps = eps
 
-    def __call__(self, state, Q):
-        probs = self.get_actions_probabilities(state, Q)
+    def __call__(self, state, action_values):
+        probs = self.get_actions_probabilities(action_values)
         return np.random.choice(self.actions, p=probs)
 
-    def get_actions_probabilities(self, state, Q):
-        max_action = np.argmax(Q[state])
+    def get_actions_probabilities(self, state, action_values):
+        max_action = np.argmax(action_values)
         return np.where(self.actions==max_action,
                         1.0-self.eps+self.eps/self.num_actions, # prob. greedy action
                         self.eps/self.num_actions)
@@ -49,14 +47,17 @@ class EpsGreedy(Policy):
         self.num_actions = len(actions)
         self.eps = eps
 
-    def __call__(self, state, Q):
+        self.info = {'greedy': 0, 'games': 0}
+
+    def __call__(self, state, action_values):
+        self.info['games'] += 1
         if np.random.uniform() <= self.eps:
             return np.random.choice(self.actions)
-        else:
-            return self.actions[np.argmax(Q[state])]
+        self.info['greedy'] += 1
+        return self.actions[np.argmax(action_values)]
 
-    def get_actions_probabilities(self, state, Q):
-        max_action = np.argmax(Q[state])
+    def get_actions_probabilities(self, state, action_values):
+        max_action = np.argmax(action_values)
         return np.where(self.actions==max_action,
                         1.0-self.eps+self.eps/self.num_actions, # prob. greedy action
                         self.eps/self.num_actions)
@@ -65,20 +66,21 @@ class EpsGreedy(Policy):
 class EpsDecayGreedy(EpsGreedy):
     def __init__(self, actions, N = 100):
         super().__init__(actions, 1)
+        self.state_visit = defaultdict(int)
         self.N = N
     
-    def update(self, **kwargs):
-        self.eps = self.N / (self.N+kwargs['state_visit'])
+    def __call__(self, state, action_values):
+        self.state_visit[state] += 1
+        self.eps = self.N / (self.N+self.state_visit[state])
+        return EpsGreedy.__call__(self, state, action_values)
 
 
 class Random(Policy):
     def __init__(self, actions):
         super().__init__(actions)
     
-    def __call__(self, state, Q = None):
+    def __call__(self, state = None, action_values = None):
         return np.random.choice(self.actions)
 
-
-    def get_actions_probabilities(self, state, Q):
-        max_action = np.argmax(Q[state])
+    def get_actions_probabilities(self, state, action_values = None):
         return np.repeat(1/len(self.actions), len(self.actions))

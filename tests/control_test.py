@@ -20,7 +20,7 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.env = EnvFactory.getEnvironment('easy21-v0',0)
         np.random.seed(0)
-        eps = EpsDecayGreedy(self.env.actions, 100)
+        eps = EpsDecayGreedy(self.env.actions, 1000)
         self.agent = MCControlAgent(self.env, 1.0, HashTransformer(), eps, every_visit=True)
 
     def test1(self):
@@ -29,6 +29,7 @@ class Test(unittest.TestCase):
         episodes = 1000000
         start = time.time()    
         info = self.agent.learn(episodes)
+        print(info)
         transf = self.agent.transformer
         print("Learning time: %s s" % (time.time() - start))
         V = self.agent.get_state_value_function(optimality=True)
@@ -36,7 +37,7 @@ class Test(unittest.TestCase):
         for k,v in V.items():
             state = transf.invtransform(k) - 1
             V_matrix[tuple(state.astype(int))] = v
-        plot_V(V_matrix, dealer, player)#, save="mc.pdf")
+        plot_V(V_matrix, dealer, player, save="mc1milionepisode.pdf")
         
         with open(os.path.join(RESULT_PATH,'VMC_{}.pickle'.format(episodes)), 'wb') as f:
              pickle.dump(V_matrix, f)

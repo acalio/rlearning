@@ -175,3 +175,34 @@ class DoubleQLearning(QLearning):
     def select_action(self, state):
         return self.policy(state, self.Q[state] + self.Q_[state])
 
+    def get_state_value_function(self, **kwargs):
+        """
+        Get the state value from the Q-values derived
+        from the learning process. The Vs can be either
+        selected by taking the expectation or the max
+
+        Parameters
+        ----------
+            optimality : boolean,  true if for each state-action pair
+                            you want to select the maximal value
+        
+        Returns
+        -------
+            State values for every state encounter in the learning phase
+        """
+        try:
+            optimality = kwargs['optimality']
+        except KeyError:
+            optimality = False
+        num_actions = self.env.action_space.n
+        cz = lambda : np.zeros(num_actions)
+        V = defaultdict(cz)
+        for k, action_array in self.Q.items():
+            if optimality:
+                V[k] = max(np.max(action_array), np.max(self.Q_[k]))
+            else:
+                max_action = np.argmax(action_array)
+                probs = self.policy.get_actions_probabilities(k, action_array + self.Q_[k])
+                mean = np.dot(action_array, probs)
+                V[k] = mean
+        return V

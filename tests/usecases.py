@@ -13,21 +13,25 @@ def isControlAgent(agent):
             return True
     return False
 
+def string_params(kwargs):
+    return "{}".format("_".join(["{}{}".format(k,v)  for k,v in kwargs.items()]))
+    
 
-def learnQV(agent, episodes, env, algo):
+
+def learnQV(agent, episodes, env, algo, algo_kws = None, save_V = True, save_Q = True):
     player, dealer = env.observation_space.high
     start = time.time()    
     info = agent.learn(episodes)
     print("Learning time: %s s" % (time.time() - start))
     V_matrix = extract_V(agent, env)
     
-
+    algo = "_".join([algo,string_params(algo_kws)])
     plot_V(V_matrix, dealer, player, save=os.path.join(RESULT_PATH, 'img', "{}.pdf".format(algo)))
-
-    with open(os.path.join(RESULT_PATH,'V{}_{}.pickle'.format(algo, episodes)), 'wb') as f:
-            pickle.dump(V_matrix, f)
-
-    if isControlAgent(agent):
+    if save_V:
+        with open(os.path.join(RESULT_PATH,'V{}_{}.pickle'.format(algo, episodes)), 'wb') as f:
+                pickle.dump(V_matrix, f)
+    
+    if isControlAgent(agent) and save_Q:
         Q_matrix = extract_Q(agent, env)
         with open(os.path.join(RESULT_PATH,'Q{}_{}.pickle'.format(algo,episodes)), 'wb') as f:
             pickle.dump(Q_matrix, f)
@@ -72,13 +76,14 @@ def play(agent, env, runs):
 
 def RMSE(agent, episodes, env, algo, target_Q):
     y = []
+    num_states, num_actions = len(target_Q), len(next(iter(target_Q)))
     for i in range(episodes):
         agent.learn(1)
         rmse = 0
         for k,v in target_Q.items():
             agent_qs = agent.Q[k]
             rmse += norm(v-agent_qs, ord=2)
-        y.append(rmse/len(target_Q))
+        y.append(rmse/ (num_states * num_actions))
     return y
 
         

@@ -24,9 +24,16 @@ class Test(unittest.TestCase):
         
     def test1(self):
         np.random.seed(0)
+        episodes, nsteps, alpha, gamma = 50000, 2, 0.01, 0.5
         eps = EpsDecayGreedy(self.env.actions, 100)
-        agent = nStepSarsa(self.env, 1.0, HashTransformer(), eps, 0.01, 2)
-        uc.learnQV(agent, 500000, self.env, 'nstep1')   
+        agent = nStepSarsa(self.env, gamma, HashTransformer(), eps, alpha, nsteps)
+        uc.learnQV(agent, episodes, self.env, 'nstep',
+                   save_Q=False,
+                   save_V=True,
+                   algo_kws=dict(episodes=episodes, 
+                                 gamma=gamma,
+                                 alpha=alpha,
+                                 nsteps=nsteps))
         uc.play(agent, self.env, 1000)
 
 

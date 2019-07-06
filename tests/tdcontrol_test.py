@@ -23,6 +23,7 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.env = EnvFactory.getEnvironment('easy21-v0',0)
         self.episodes = 50000
+        
     def test1(self):
         alpha = 0.01
         np.random.seed(0)
@@ -33,7 +34,8 @@ class Test(unittest.TestCase):
                    'SARSA',
                    save_Q=False,
                    save_V=False,
-                   algo_kws=dict(episodes=self.episodes, alpha=alpha))        
+                   algo_kws=dict(episodes=self.episodes, alpha=alpha))     
+        uc.play(agent, self.env, 1000)   
 
     def test2(self):
         alpha = 0.01

@@ -31,7 +31,7 @@ class nStepSarsa(nStepAgent, ControlAgent):
 
 
     def _update_estimate(self, target):
-        s, a, r = self.q.pop()
+        s, a, _ = self.q.popleft()
         self.state_action_visit[s][a] += 1
         self.alpha = 1/self.state_action_visit[s][a]
         self.Q[s][a] += self.alpha * (target - self.Q[s][a]) 
@@ -86,7 +86,7 @@ class nStepTreeBackup(nStepAgent, ControlAgent):
 
 
     def _update_estimate(self, target):
-        s, a, r = self.q.pop()
+        s, a, r = self.q.popleft()
         self.state_action_visit[s][a] += 1
         self.alpha = 1/self.state_action_visit[s][a]
         self.Q[s][a] += self.alpha * (target - self.Q[s][a]) 

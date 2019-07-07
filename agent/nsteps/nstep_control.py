@@ -43,7 +43,8 @@ class nStepSarsa(nStepAgent, ControlAgent):
 
 class nStepTreeBackup(nStepAgent, ControlAgent):
     """
-    On-Policy nstep control
+    Off-Policy nstep control without
+    importance sampling
     """
     def __init__(self, env, discount_factor, transformer, policy, alpha, nsteps):
         ControlAgent.__init__(self, env, discount_factor, transformer, policy)

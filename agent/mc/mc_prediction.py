@@ -37,7 +37,6 @@ class MCPredictionAgent(PredictionAgent):
                     state = self.transformer.transform(states[-i-1])
                     self.state_visits[state] += 1
                     self.V[state] += (greturn-self.V[state])/self.state_visits[state]
-                    
 
     def select_action(self, state):
         return self.env.action_space.sample()

@@ -11,7 +11,7 @@ class TDAgent(Agent):
 
     def learn(self, episodes):
         printProgressBar(0, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
-        
+        select_action = self.select_action        
         # statistics anout the learning process
         info = {
             'rpe': []
@@ -23,29 +23,30 @@ class TDAgent(Agent):
             
             done = False
             observation = self.env.reset()
-            next_action = self.select_action(self.transformer.transform(observation))
+            # next_action = self.select_action(self.transformer.transform(observation))
+            next_action = self.select_action(observation)
             while not done:
                 action = next_action
                 next_observation, reward, done, _ = self.env.step(action)
 
-                # transform current and next state
-                trans_ob = self.transformer.transform(observation)
-                trans_next_ob = None if done else self.transformer.transform(next_observation)                
-                next_action = None if done else self.select_action(trans_next_ob)
+                if done:
+                    next_observation, next_action = None, None
+                else:
+                    next_action = select_action(next_observation)
 
-                td_error = self._td_error(trans_ob, action, reward, trans_next_ob, next_action)
-                self._update_estimate(trans_ob, action, td_error)
+                td_error = self._td_error(observation, action, reward, next_observation, next_action)
+                self._update(observation, action, td_error)
                 observation = copy(next_observation)
 
         return info
 
         
     @abstractmethod
-    def _td_error(self, state, action, reward, next_state):
+    def _td_error(self, state, action, reward, next_state, next_action):
         pass
 
     @abstractmethod
-    def _update_estimate(self, state, action, td_error):
+    def _update(self, state, action, td_error):
         pass
     
 

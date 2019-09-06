@@ -1,4 +1,4 @@
-from agent import ControlAgent
+from agent import ControlAgent, ApproximationAgent
 from agent.tdlearning import TDAgent
 from collections import defaultdict
 import numpy as np
@@ -21,14 +21,14 @@ class SARSA(TDAgent,ControlAgent):
             policy : Policy, to evaluate
             alpha : float, step size of the update rule
         """
-        ControlAgent.__init__(self, env, discount_factor, transformer, policy)
         TDAgent.__init__(self, env, discount_factor, transformer, policy, alpha)
+        ControlAgent.__init__(self, env, discount_factor, transformer, policy)
         
         cz = lambda : np.zeros(self.env.action_space.n)
         self.state_action_visit = defaultdict(cz)
 
     
-    def _td_error(self, s, a, r, s_prime, a_prime):
+    def _td_error(self, state, action, reward, next_state, next_action):
         """
         Compute the TD-Error
         Parameters:
@@ -39,12 +39,19 @@ class SARSA(TDAgent,ControlAgent):
             s_prime : state next to s (already transformed)
             a_prime : action next_to
         """
-        if s_prime is None and a_prime is None:
-            return r - self.Q[s][a]
-        return r + self.discount_factor * self.Q[s_prime][a_prime] - self.Q[s][a]
+        if next_state is not None:
+            next_state = self.transformer.transform(next_state)
+            next_state_value = self._Q[next_state][next_action]
+        else:
+            next_state_value = 0
+
+        state = self.transformer.transform(state)
+        current_state_value = self._Q[state][action]
+
+        return reward + self.discount_factor * next_state_value - current_state_value
 
 
-    def _update_estimate(self, state, action, td_error):
+    def _update(self, state, action, td_error):
         """
         Update the estimate
 
@@ -54,15 +61,24 @@ class SARSA(TDAgent,ControlAgent):
             action : current action
             td_error: td error
         """
+        state = self.transformer.transform(state)
         self.state_action_visit[state][action] += 1
         self.alpha = 1 / self.state_action_visit[state][action]
-        self.Q[state][action] += self.alpha * td_error
+        self._Q[state][action] += self.alpha * td_error
 
 
     def select_action(self, state):
-        return self.policy(state, self.Q[state])
+        state_transformed = self.transformer.transform(state)
+        return self.policy(state, self._Q[state_transformed])
 
 
+
+class SARSAFA(SARSA, ApproximationAgent):
+    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate, every_visit=False):
+
+    def __init__(self, env, discount_factor, transformer, policy, alpha, ):
+        pass
+    
 
 
 class ExpSARSA(SARSA):
@@ -70,7 +86,7 @@ class ExpSARSA(SARSA):
     def __init__(self, env, discount_factor, transformer, policy, alpha):
         SARSA.__init__(self, env, discount_factor, transformer, policy, alpha)
         
-    def _td_error(self, s, a, r, s_prime, a_prime):
+    def _td_error(self, state, action, reward, next_state, next_action):
         """
         Compute the TD-Error
         Parameters:
@@ -81,14 +97,14 @@ class ExpSARSA(SARSA):
             s_prime : state next to s (already transformed)
             a_prime : action next_to
         """
-        if s_prime is None:
+        if next_state is None:
             exp_next_q = 0
         else:
             exp_next_q = np.dot(
-                self.policy.get_actions_probabilities(s_prime, self.Q[s_prime]), # probabilities
-                self.Q[s_prime])                                # actions q-values
+                self.policy.get_actions_probabilities(next_state, self.Q[next_state]), # probabilities
+                self.Q[next_state])                                # actions q-values
         
-        return r + self.discount_factor * exp_next_q - self.Q[s][a]
+        return reward + self.discount_factor * exp_next_q - self.Q[state][action]
 
     
         
@@ -101,7 +117,7 @@ class QLearning(ControlAgent, TDAgent):
         cz = lambda : np.zeros(self.env.action_space.n)
         self.state_action_visit = defaultdict(cz)
 
-    def _td_error(self, s, a, r, s_prime, a_prime):
+    def _td_error(self, state, action, reward, next_state, next_action):
         """
         Compute the TD-Error
         Parameters:
@@ -112,14 +128,14 @@ class QLearning(ControlAgent, TDAgent):
             s_prime : state next to s (already transformed)
             a_prime : action next_to
         """
-        if s_prime is None:
+        if next_state is None:
             next_max_q = 0
         else:
-            next_max_q = np.max(self.Q[s_prime])
-        return r + self.discount_factor * next_max_q - self.Q[s][a]
+            next_max_q = np.max(self.Q[next_state])
+        return reward + self.discount_factor * next_max_q - self.Q[state][action]
     
 
-    def _update_estimate(self, state, action, td_error):
+    def _update(self, state, action, td_error):
         self.state_action_visit[state][action] += 1
         self.alpha = 1/self.state_action_visit[state][action]
         self.Q[state][action] += self.alpha * td_error
@@ -140,7 +156,7 @@ class DoubleQLearning(QLearning):
         cz = lambda : np.zeros(self.env.action_space.n)
         self.Q_ = defaultdict(cz)
 
-    def _td_error(self, s, a, r, s_prime, a_prime):
+    def _td_error(self, state, action, reward, next_state, next_action):
         """
         Compute the TD-Error wrt to each Q-Table
         and return a list of td-errors, with two
@@ -154,17 +170,17 @@ class DoubleQLearning(QLearning):
             s_prime : state next to s (already transformed)
             a_prime : action next_to
         """
-        if s_prime is None:
+        if next_state is None:
             next_q_value, next_q_value_ = 0,0
         else:
-            next_q_value = self.Q_[s_prime][np.argmax(self.Q[s_prime])]
-            next_q_value_ = self.Q[s_prime][np.argmax(self.Q_[s_prime])]
+            next_q_value = self.Q_[next_state][np.argmax(self.Q[next_state])]
+            next_q_value_ = self.Q[next_state][np.argmax(self.Q_[next_state])]
         return [
-                r + self.discount_factor * next_q_value - self.Q[s][a], 
-                r + self.discount_factor * next_q_value_ - self.Q_[s][a]
+                reward + self.discount_factor * next_q_value - self.Q[state][action], 
+                reward + self.discount_factor * next_q_value_ - self.Q_[state][action]
             ] 
 
-    def _update_estimate(self, state, action, td_error):
+    def _update(self, state, action, td_error):
         self.state_action_visit[state][action] += 1
         self.alpha = 1 / self.state_action_visit[state][action]
         if np.random.uniform() <= 0.5:

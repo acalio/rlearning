@@ -25,13 +25,12 @@ class Test(unittest.TestCase):
         
 
     def test1(self):
-        episodes = 1000000
+        episodes = 10000
         eps = EpsDecayGreedy(self.env.actions, 1000)
         agent = MCControlAgent(self.env, 1.0, HashTransformer(), eps, every_visit=True)
         uc.learnQV(agent, episodes, 
                    self.env,
                    'mc',
                    save_Q=False,
-                   save_V=True,
+                   save_V=False,
                    algo_kws=dict(episodes=episodes))
-            

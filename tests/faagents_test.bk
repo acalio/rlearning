@@ -1,0 +1,45 @@
+import unittest
+from utils import EnvFactory
+import numpy as np
+from utils.features_transformer import LinearFeatureTransformer, PolynomialFeatureTransformer, TileFeatureTransformer
+import estimators as e 
+from agent.fa import fa_prediction as fp
+from utils.hash_transformer import HashTransformer
+from agent import policy as pol
+from utils.plots import plot_V
+import tests.usecases as uc
+
+class Test(unittest.TestCase):
+    def setUp(self):
+        self.env = EnvFactory.getEnvironment('easy21-v0', 0)
+        
+    @unittest.skip
+    def test1(self):
+        rpolicy = pol.Random([0,1])
+        transf = LinearFeatureTransformer(2,2)
+        estimator = e.LinearEstimator(2)
+        agent = fp.MCPredictionFA(self.env, 1.0, HashTransformer(), rpolicy, estimator, transf)
+        agent.learn(10000)
+        player, dealer = self.env.observation_space.high
+        V_matrix = np.zeros((player, dealer))
+        for p in np.arange(0, player, 1):
+            for d in np.arange(0, dealer):
+                features = transf.transform(np.array([p,d]))
+                V_matrix[int(p), int(d)] = estimator(features)
+        plot_V(V_matrix, dealer, player)
+        print(V_matrix)
+
+    def test2(self):
+        rpolicy = pol.Random([0,1])
+        transf = PolynomialFeatureTransformer(2,2)
+        estimator = e.LinearEstimator(transf.transformed_shape[0])
+        agent = fp.MCPredictionFA(self.env, 1.0, HashTransformer(), rpolicy, estimator, transf)
+        agent.learn(10000)
+        player, dealer = self.env.observation_space.high
+        V_matrix = np.zeros((player, dealer))
+        for p in np.arange(0, player, 1):
+            for d in np.arange(0, dealer):
+                features = transf.transform(np.array([p,d]))
+                V_matrix[int(p), int(d)] = estimator(features)
+        plot_V(V_matrix, dealer, player)
+        print(V_matrix)

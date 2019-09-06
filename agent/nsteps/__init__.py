@@ -24,11 +24,10 @@ class nStepAgent(Agent):
         }
 
         #create refs for efficiency reasons
-        transform = self.transformer.transform
         select_action = self.select_action
         step = self.env.step
         get_target = self._get_target
-        update_estimate = self._update_estimate
+        update_estimate = self._update
 
 
         for e in range(episodes):
@@ -40,12 +39,12 @@ class nStepAgent(Agent):
             
 
             while not done:
-                trans_observation = transform(observation)
-                action = select_action(trans_observation)
+                
+                action = select_action(observation)
                 next_observation, reward, done, _ = step(action)
                 observation = copy(next_observation)
                 
-                self.q.append((trans_observation, action, reward))
+                self.q.append((observation, action, reward))
 
                 if len(self.q) > self.nsteps or done:
                     while True:
@@ -61,5 +60,6 @@ class nStepAgent(Agent):
         pass
 
     @abstractmethod
-    def _update_estimate(self, target):
+    def _update(self, target):
         pass
+    

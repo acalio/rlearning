@@ -1,8 +1,7 @@
-from agent import ControlAgent
+from agent import ControlAgent, ApproximationAgent
 import numpy as np
 from collections import defaultdict
 from utils import printProgressBar
-
 
 class MCControlAgent(ControlAgent):
     """
@@ -19,7 +18,7 @@ class MCControlAgent(ControlAgent):
         """
         Implementation of the on-policy first visit
         MC control algorithm with eps-soft policy algorithm.
-        page 101 of the Sutton and Barto Book
+        page 101 of the Sutt7on and Barto Book
         """
         printProgressBar(0, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
         
@@ -37,13 +36,10 @@ class MCControlAgent(ControlAgent):
             
             greturn = 0
             for i in range(len(states)):
-                greturn = self.discount_factor*greturn + rewards[-i-1]
+                s,a,r = states[-i-1], int(actions[-i-1]), rewards[-i-1]
+                greturn = self._return(greturn, r,a)
                 if self.every_visit or self._is_first_visit(states[-i-1], states[:-i-1]):
-                    state = self.transformer.transform(states[-i-1])
-                    action = int(actions[-i-1])
-                    self.state_action_visit[state][action] += 1
-                    self.Q[state][action] += 1 / self.state_action_visit[state][action] * (greturn - self.Q[state][action])
-
+                    self._update(greturn, s, a)
             #save the cumulative reward
             info['rpe'].append(greturn)
 
@@ -51,7 +47,8 @@ class MCControlAgent(ControlAgent):
 
 
     def select_action(self, state):
-        return self.policy(state, self.Q[state])
+        state = self.transformer.transform(state)
+        return self.policy(state, self._Q[state])
 
 
     def _is_first_visit(self, state, previous_states):
@@ -61,7 +58,14 @@ class MCControlAgent(ControlAgent):
                 return False
         return True
     
-
+    def _update(self, greturn, state, action):
+        Q, state_action_visit = self._Q, self.state_action_visit
+        state = self.transformer.transform(state)
+        state_action_visit[state][action] += 1
+        Q[state][action] += 1/state_action_visit[state][action] * (greturn - Q[state][action])
+    
+    def _return(self, greturn, reward, action):
+        return self.discount_factor*greturn + reward
 
 class OffPolicyMCControlAgent(MCControlAgent):
     """
@@ -87,10 +91,6 @@ class OffPolicyMCControlAgent(MCControlAgent):
         self.every_visit = every_visit
         self.regular_is = ratio == "regular"
         
-        # init data structure
-        zeros = lambda : np.zeros(self.env.action_space.n)
-        self.Q = defaultdict(zeros)
-        self.state_action_visit = defaultdict(zeros)
         
 
     def learn(self, episodes):
@@ -114,21 +114,19 @@ class OffPolicyMCControlAgent(MCControlAgent):
             
             greturn = 0
             is_ratio = 1
+            Q = self._Q
             for i in range(len(states)):
-                state_transformed = self.transformer.transform(states[-i-1])
-                action = int(actions[-i-1])
-
+                s,a,r = states[-i-1], int(actions[-i-1]), rewards[-i-1]
+                transf_s = self.transformer.transform(s)
                 #scale the return with the importance sampling ratio
-                greturn = self.discount_factor*greturn + rewards[-i-1]
+                greturn = self._return(greturn, a, r)
 
-                is_ratio *= self.policy.get_actions_probabilities(state_transformed, self.Q[state_transformed])[action]\
-                                / self.b_policy.get_actions_probabilities(state_transformed, self.Q[state_transformed])[action]
+                is_ratio *= self.policy.get_actions_probabilities(s, Q[transf_s])[a]\
+                                / self.b_policy.get_actions_probabilities(s, Q[transf_s])[a]
 
                 if self.every_visit or self._is_first_visit(states[-i-1], states[:-i-1]):
                     scaled_greturn = is_ratio * greturn
-                    self.state_action_visit[state_transformed][action] += 1
-                    self.Q[state_transformed][action] += (greturn-self.Q[state_transformed][action])\
-                        /self.state_action_visit[state_transformed][action]
+                    self._update(scaled_greturn, states[-i-1], int(actions[-i-1]))
             
             #save the cumulative reward
             info['rpe'].append(greturn)
@@ -137,4 +135,28 @@ class OffPolicyMCControlAgent(MCControlAgent):
 
             
     def select_action(self, state):
-        return self.b_policy(state, self.Q[state])
+        state = self.transformer.transform(state)
+        return self.b_policy(state, self._Q[state])
+    
+        
+
+class MCControlFA(MCControlAgent, ApproximationAgent):
+
+    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate, every_visit=False):
+        ApproximationAgent.__init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate)        
+        MCControlAgent.__init__(self, env, discount_factor, transformer, policy, every_visit)
+
+
+    def select_action(self, state):
+        featurize = self.feature_converter.transform
+        estimate = self.estimator
+        values = [estimate(featurize(state, action=i)) for i in range(self.env.action_space.n)]
+        return self.policy(state, values)
+
+    def _update(self, greturn, state, action):
+        state_action_feature = self.feature_converter.transform(state, action = action)
+        state_action_transformed = self.transformer.transform(state_action_feature)
+        self.state_action_visit[state_action_transformed] += 1
+        error = greturn - self.estimator(state_action_feature)
+        self._update_estimator(error, state_action_feature)
+    

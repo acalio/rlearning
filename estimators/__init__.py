@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+
 class Estimator(ABC):
 
     def __init__(self):
@@ -30,7 +31,7 @@ class LinearEstimator(Estimator):
     def __init__(self, shape, weight_initialization = 'normal'):
         super().__init__()
         self.w = Estimator.init_weights(shape, weight_initialization)
-
+    
     def __call__(self, observation):
         return np.dot(self.w, observation)
 

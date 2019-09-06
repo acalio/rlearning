@@ -10,11 +10,11 @@ class PredictionTest(unittest.TestCase):
     def setUp(self):
         self.env = EnvFactory.getEnvironment('easy21-v0')
         eps = Random(self.env.actions)
-        self.agent = TDPrediction(self.env, 1.0, HashTransformer(), eps, 0.2)
+        self.agent = TDPrediction(self.env, 1.0, HashTransformer(), 0.0001)
         
     def test3(self):
         player, dealer = self.env.observation_space.high
-        self.agent.learn(1000000)
+        self.agent.learn(100000)
         transf = self.agent.transformer
         V = self.agent.get_state_value_function()
         V_matrix = np.zeros((player, dealer))

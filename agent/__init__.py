@@ -68,7 +68,7 @@ class Agent(ABC):
         done = False
         observation = self.env.reset()
         while not done:
-            action = self.select_action(self.transformer.transform(observation))
+            action = self.select_action(observation)
             next_observation, reward, done, _ = self.env.step(action)
             episode.append((copy(observation), action, reward))
             observation = copy(next_observation)
@@ -87,10 +87,10 @@ class Agent(ABC):
 class PredictionAgent(Agent):
     def __init__(self, env, discount_factor, transformer, policy):
         Agent.__init__(self, env, discount_factor, transformer, policy)
-        self.V = defaultdict(float)
+        self._V = defaultdict(float)
 
     def get_state_value_function(self, **kwargs):
-        return self.V
+        return self._V
     
 
 
@@ -100,7 +100,7 @@ class ControlAgent(Agent):
     def __init__(self, env, discount_factor, transformer, policy):
         Agent.__init__(self, env, discount_factor, transformer, policy)
         zeros = lambda : np.zeros(self.env.action_space.n)
-        self.Q = defaultdict(zeros)
+        self._Q = defaultdict(zeros)
 
     def get_state_value_function(self, **kwargs):
         """
@@ -124,12 +124,30 @@ class ControlAgent(Agent):
         num_actions = self.env.action_space.n
         cz = lambda : np.zeros(num_actions)
         V = defaultdict(cz)
-        for k, action_array in self.Q.items():
+        for k, action_array in self._Q.items():
             if optimality:
                 V[k] = np.max(action_array)
             else:
-                max_action = np.argmax(action_array)
-                probs = self.policy.get_actions_probabilities(k, Q)
+                probs = self.policy.get_actions_probabilities(k, self._Q)
                 mean = np.dot(action_array, probs)
                 V[k] = mean
         return V
+
+
+class ApproximationAgent(Agent):
+
+    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate = 0.001):
+        Agent.__init__(self,env, discount_factor, transformer, policy)
+        self.alpha = learning_rate
+        self.estimator = estimator
+        self.feature_converter = feature_converter
+        
+    def _get_target(self):
+        pass
+                        
+    def _update_estimator(self, error, state_feature):
+        self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)
+        if np.all(np.isnan(self.estimator.w)):
+            raise RuntimeError("The weights got NaN! You may decrease the learning rate")
+        
+    

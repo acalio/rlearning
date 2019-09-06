@@ -1,8 +1,8 @@
-from agent import PredictionAgent
+from agent import PredictionAgent, ApproximationAgent
 from utils import EnvFactory, RandomGenerator, printProgressBar
 import numpy as np
 from collections import defaultdict
-
+from agent.policy import Random
 
 class MCPredictionAgent(PredictionAgent):
     """
@@ -10,7 +10,7 @@ class MCPredictionAgent(PredictionAgent):
     """
 
     def __init__(self, env, discount_factor, transformer):
-        super().__init__(env, discount_factor, transformer)
+        super().__init__(env, discount_factor, transformer, Random(np.arange(env.action_space.n)))
 
         # initialize data structures
         self.state_shape = self.env.observation_space.shape
@@ -33,13 +33,13 @@ class MCPredictionAgent(PredictionAgent):
             greturn = 0
             for i in range(len(states)):
                 greturn = self.discount_factor*greturn + rewards[-i-1]
+                
                 if self.__is_first_visit(states[-i-1], states[:-i-1]):
-                    state = self.transformer.transform(states[-i-1])
-                    self.state_visits[state] += 1
-                    self.V[state] += (greturn-self.V[state])/self.state_visits[state]
+                    self._update(greturn, states[-i-1])
 
     def select_action(self, state):
-        return self.env.action_space.sample()
+        state_transformed = self.transformer.transform(state)
+        return self.policy(state_transformed)
 
 
     def __is_first_visit(self, state, previous_states):
@@ -49,4 +49,29 @@ class MCPredictionAgent(PredictionAgent):
                 return False
         return True
 
+    def _update(self, greturn, state):
+        state = self.transformer.transform(state)
+        self.state_visits[state] += 1
+        self._V[state] += (greturn-self._V[state])/self.state_visits[state]
 
+
+
+class MCPredictionFA(MCPredictionAgent,ApproximationAgent):
+    
+    def __init__(self, env, discount_factor, transformer, estimator, feature_converter, learning_rate):
+        ApproximationAgent.__init__(self, env, discount_factor, transformer, Random(np.arange(env.action_space.n)), estimator, feature_converter, learning_rate)
+        MCPredictionAgent.__init__(self, env, discount_factor, transformer)
+                
+
+    def select_action(self, state):
+        state_feature = self.transformer.transform(state)
+        return self.policy(state_feature)
+    
+    def get_state_value_function(self, **kwargs):
+        pass
+
+    def _update(self, greturn, state):
+        state_feature = self.feature_converter.transform(state)
+        error = greturn - self.estimator(state_feature)
+        self._update_estimator(error, state_feature)
+        

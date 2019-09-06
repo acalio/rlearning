@@ -60,13 +60,12 @@ def extract_Q(agent, env):
 def play(agent, env, runs):
     tests = runs
     wl = [0, 0]
-    Q = agent.Q
     for _ in range(tests):
         done = False
         observation = env.reset()
         reward = 0
         while not done:
-            action = np.argmax(Q[agent.transformer.transform(observation)])
+            action = agent.select_action(observation)
             observation, reward, done, _ = env.step(action)
 
         ix = 0 if reward == 1 else 1

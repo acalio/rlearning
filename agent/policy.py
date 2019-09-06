@@ -1,6 +1,8 @@
 import numpy as np
 from abc import ABC, abstractmethod 
 from collections import defaultdict
+from utils.hash_transformer import HashTransformer
+from utils.dummy_transformer import DummyTransformer
 
 class Policy(ABC):
     """
@@ -31,7 +33,7 @@ class EpsSoft(Policy):
         self.eps = eps
 
     def __call__(self, state, action_values):
-        probs = self.get_actions_probabilities(action_values)
+        probs = self.get_actions_probabilities(state, action_values)
         return np.random.choice(self.actions, p=probs)
 
     def get_actions_probabilities(self, state, action_values):
@@ -64,12 +66,14 @@ class EpsGreedy(Policy):
     
 
 class EpsDecayGreedy(EpsGreedy):
-    def __init__(self, actions, N = 100):
+    def __init__(self, actions, N = 100, transf = DummyTransformer()):
         super().__init__(actions, 1)
         self.state_visit = defaultdict(int)
         self.N = N
-    
+        self.transf = transf
+
     def __call__(self, state, action_values):
+        state = self.transf.transform(state)
         self.state_visit[state] += 1
         self.eps = self.N / (self.N+self.state_visit[state])
         return EpsGreedy.__call__(self, state, action_values)

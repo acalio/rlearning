@@ -50,7 +50,7 @@ class Agent(ABC):
         """Return the value function"""
         pass
 
-    def generate_episode(self, as_separate_array = False, state_dim = None):
+    def generate_episode(self, as_separate_array = False):
         """ Generate an episode following a given policy
 
         Parameters
@@ -67,6 +67,7 @@ class Agent(ABC):
         episode = []
         done = False
         observation = self.env.reset()
+        state_dim = self.env.observation_space.shape
         while not done:
             action = self.select_action(observation)
             next_observation, reward, done, _ = self.env.step(action)
@@ -82,6 +83,28 @@ class Agent(ABC):
             return states, actions, rewards
         return episode
 
+
+class TabularAgent(Agent):
+    def __init__(self, env, discount_factor, transformer, policy):
+        super().__init__(env, discount_factor, transformer, policy)
+
+
+class ApproximationAgent(Agent):
+
+    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate = 0.001):
+        Agent.__init__(self,env, discount_factor, transformer, policy)
+        self.alpha = learning_rate
+        self.estimator = estimator
+        self.feature_converter = feature_converter
+        
+    def _get_target(self):
+        pass
+                        
+    def _update_estimator(self, error, state_feature):
+        self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)
+        if np.all(np.isnan(self.estimator.w)):
+            raise RuntimeError("The weights got NaN! You may want to decrease the learning rate")
+        
 
 
 class PredictionAgent(Agent):
@@ -134,20 +157,5 @@ class ControlAgent(Agent):
         return V
 
 
-class ApproximationAgent(Agent):
 
-    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate = 0.001):
-        Agent.__init__(self,env, discount_factor, transformer, policy)
-        self.alpha = learning_rate
-        self.estimator = estimator
-        self.feature_converter = feature_converter
-        
-    def _get_target(self):
-        pass
-                        
-    def _update_estimator(self, error, state_feature):
-        self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)
-        if np.all(np.isnan(self.estimator.w)):
-            raise RuntimeError("The weights got NaN! You may decrease the learning rate")
-        
     

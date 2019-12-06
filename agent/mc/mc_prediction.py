@@ -1,4 +1,4 @@
-from agent import PredictionAgent, ApproximationAgent
+from agent import PredictionAgent, ApproximationAgent, TabularAgent
 from utils import EnvFactory, RandomGenerator, printProgressBar
 import numpy as np
 from collections import defaultdict
@@ -9,7 +9,7 @@ class MCPredictionAgent(PredictionAgent):
     First-Visit MC prediction  
     """
 
-    def __init__(self, env, discount_factor, transformer):
+    def __init__(self, env, discount_factor, transformer, every_visit = False):
         super().__init__(env, discount_factor, transformer, Random(np.arange(env.action_space.n)))
 
         # initialize data structures
@@ -22,17 +22,24 @@ class MCPredictionAgent(PredictionAgent):
         Implementation of the first-visit MC prediction
         algorithm on page 92 of the Sutton and Barto book
         """
+        # create aliases for performace reasons
+        gen_ep = self.generate_episode
+        transform = self.transformer.transform
+        state_visits = self.state_visits
+        is_fist_visit = self.__is_first_visit
+        gamma = self.discount_factor
+
         printProgressBar(0, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
         for i in range(episodes):
             if (i+1)%100 == 0:
                 printProgressBar(i+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
 
-            states, actions, rewards = self.generate_episode(as_separate_array=True,\
-                state_dim=self.env.observation_space.shape)
-
+            states, actions, rewards = gen_ep(as_separate_array=True)
+            
             greturn = 0
             for i in range(len(states)):
-                greturn = self.discount_factor*greturn + rewards[-i-1]
+                s, a, r = states[-i-1], int(actions[-i-1]), rewards[-i-1]
+                greturn = gamma * greturn + r
                 
                 if self.__is_first_visit(states[-i-1], states[:-i-1]):
                     self._update(greturn, states[-i-1])
@@ -75,3 +82,9 @@ class MCPredictionFA(MCPredictionAgent,ApproximationAgent):
         error = greturn - self.estimator(state_feature)
         self._update_estimator(error, state_feature)
         
+
+class MCPredictionAgentTab(MCPredictionAgent, TabularAgent):
+
+    def __init__(self, env, discount_factor, transformer):
+        ApproximationAgent.__init__(self, env, discount_factor, transformer)
+        MCPredictionAgent.__init__(self, env, discount_factor, transformer )

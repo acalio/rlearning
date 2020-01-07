@@ -14,8 +14,6 @@ class ApproximationAgent(Agent):
         self.feature_converter = feature_converter
         
 
-    def _get_target(self):
-        pass
                         
     def _update_estimate(self, error, state_feature):
         self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)

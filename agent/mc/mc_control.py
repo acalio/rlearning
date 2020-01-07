@@ -1,71 +1,34 @@
 from agent import ControlAgent, ApproximationAgent
+from agent.mc import MCAgent
 import numpy as np
 from collections import defaultdict
 from utils import printProgressBar
 
-class MCControlAgent(ControlAgent):
+class MCControlAgent(MCAgent,ControlAgent):
     """
     On-Policy first visit MC control (for \eps - soft policies)
     """
 
     def __init__(self, env, discount_factor, transformer, policy, every_visit=False):
-        super().__init__(env, discount_factor, transformer, policy)
-        zeros = lambda : np.zeros(self.env.action_space.n)
-        self.state_action_visit = defaultdict(zeros)
-        self.every_visit = every_visit
+        MCAgent.__init__(self, env, discount_factor, transformer, policy, every_visit)
+        ControlAgent.__init__(self, env, discount_factor, transformer, policy)
 
-    def learn(self, episodes):
-        """
-        Implementation of the on-policy first visit
-        MC control algorithm with eps-soft policy algorithm.
-        page 101 of the Sutt7on and Barto Book
-        """
-        printProgressBar(0, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
-        
-        # statistics anout the learning process
-        info = {
-            'rpe': []
-        }
-
-        for e in range(episodes):
-            if (e+1)%100 == 0:
-                printProgressBar(e+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
-            
-            states, actions, rewards = self.generate_episode(as_separate_array=True,\
-                state_dim=self.env.observation_space.shape)
-            
-            greturn = 0
-            for i in range(len(states)):
-                s,a,r = states[-i-1], int(actions[-i-1]), rewards[-i-1]
-                greturn = self._return(greturn, r,a)
-                if self.every_visit or self._is_first_visit(states[-i-1], states[:-i-1]):
-                    self._update(greturn, s, a)
-            #save the cumulative reward
-            info['rpe'].append(greturn)
-
-        return info
+        self.state_action_visit = defaultdict(lambda : np.zeros(self.env.action_space.n))
 
 
-    def select_action(self, state):
-        state = self.transformer.transform(state)
-        return self.policy(state, self._Q[state])
-
-
-    def _is_first_visit(self, state, previous_states):
-        '''check if the agent is in state for the first time'''
-        for s in previous_states:
-            if np.all(state==s):
-                return False
-        return True
-    
     def _update(self, greturn, state, action):
         Q, state_action_visit = self._Q, self.state_action_visit
         state = self.transformer.transform(state)
         state_action_visit[state][action] += 1
         Q[state][action] += 1/state_action_visit[state][action] * (greturn - Q[state][action])
     
-    def _return(self, greturn, reward, action):
-        return self.discount_factor*greturn + reward
+    def select_action(self, state):
+        state_transformed = self.transformer.transform(state)
+        return self.policy(state_transformed, self._Q[state_transformed])
+
+    def _return(self, s, action, reward, curr_return):
+        return self.discount_factor*curr_return + reward
+
 
 class OffPolicyMCControlAgent(MCControlAgent):
     """
@@ -86,61 +49,45 @@ class OffPolicyMCControlAgent(MCControlAgent):
             ratio : ["regular", "weighted"]
         """
 
-        super().__init__(env, discount_factor, transformer, target_policy)
+        MCControlAgent.__init__(self, env, discount_factor, transformer, target_policy)
         self.b_policy = behavorial_policy
         self.every_visit = every_visit
         self.regular_is = ratio == "regular"
+        self.current_episode = []
+        self.is_ratio = 1
         
-        
 
-    def learn(self, episodes):
-        """
-        Implementation of the off-policy  MC control
-        algorithm on page 111 of the Sutton and Barto Book
-        """
-        printProgressBar(0, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
-
-        # statistics anout the learning process
-        info = {
-            'rpe': []
-        }
-
-        for e in range(episodes):
-            if (e+1)%100 == 0:
-                printProgressBar(e+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
-            
-            states, actions, rewards = self.generate_episode(as_separate_array=True,\
-                state_dim=self.env.observation_space.shape)
-            
-            greturn = 0
-            is_ratio = 1
-            Q = self._Q
-            for i in range(len(states)):
-                s,a,r = states[-i-1], int(actions[-i-1]), rewards[-i-1]
-                transf_s = self.transformer.transform(s)
-                #scale the return with the importance sampling ratio
-                greturn = self._return(greturn, a, r)
-
-                is_ratio *= self.policy.get_actions_probabilities(s, Q[transf_s])[a]\
-                                / self.b_policy.get_actions_probabilities(s, Q[transf_s])[a]
-
-                if self.every_visit or self._is_first_visit(states[-i-1], states[:-i-1]):
-                    scaled_greturn = is_ratio * greturn
-                    self._update(scaled_greturn, states[-i-1], int(actions[-i-1]))
-            
-            #save the cumulative reward
-            info['rpe'].append(greturn)
-
-        return info
-
-            
     def select_action(self, state):
-        state = self.transformer.transform(state)
-        return self.b_policy(state, self._Q[state])
+        tstate = self.transformer.transform(state)
+        action = self.b_policy(state, self._Q[tstate])
+
+        is_ratio = self.policy.get_actions_probabilities(tstate, self._Q[tstate])[action]
+        is_ratio /= self.b_policy.get_actions_probabilities(tstate, self._Q[tstate])[action]
+
+        self.current_episode.append(is_ratio)
+
+        return action
+
+    def _return(self, state, action, reward, curr_return):
+        self.is_ratio *= self.current_episode.pop()
+        return self.is_ratio / self.discount_factor*curr_return + reward    
     
-        
+    def _update(self, greturn, state, action):
+        Q, state_action_visit = self._Q, self.state_action_visit
+        state = self.transformer.transform(state)
+        state_action_visit[state][action] += 1
+        Q[state][action] += 1/state_action_visit[state][action] * (greturn - Q[state][action])
+    
+
+    def _start_episode(self):
+        self.current_episode.clear()
+        self.is_ratio = 1
+
 
 class MCControlFA(MCControlAgent, ApproximationAgent):
+    """
+    Monte Carlo control with function approximation
+    """
 
     def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate, every_visit=False):
         ApproximationAgent.__init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate)        
@@ -148,8 +95,10 @@ class MCControlFA(MCControlAgent, ApproximationAgent):
 
 
     def select_action(self, state):
+        #create aliases
         featurize = self.feature_converter.transform
         estimate = self.estimator
+
         values = [estimate(featurize(state, action=i)) for i in range(self.env.action_space.n)]
         return self.policy(state, values)
 

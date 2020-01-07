@@ -63,7 +63,7 @@ class EpsGreedy(Policy):
         return np.where(self.actions==max_action,
                         1.0-self.eps+self.eps/self.num_actions, # prob. greedy action
                         self.eps/self.num_actions)
-    
+
 
 class EpsDecayGreedy(EpsGreedy):
     def __init__(self, actions, N = 100, transf = DummyTransformer()):
@@ -73,11 +73,20 @@ class EpsDecayGreedy(EpsGreedy):
         self.transf = transf
 
     def __call__(self, state, action_values):
+        self._update_eps(state)
+        return EpsGreedy.__call__(self, state, action_values)
+    
+    def get_actions_probabilities(self, state, action_values):
+        self._update_eps(state)
+        max_action = np.argmax(action_values)
+        return np.where(self.actions==max_action,
+                        1.0-self.eps+self.eps/self.num_actions, # prob. greedy action
+                        self.eps/self.num_actions)
+    
+    def _update_eps(self, state):
         state = self.transf.transform(state)
         self.state_visit[state] += 1
         self.eps = self.N / (self.N+self.state_visit[state])
-        return EpsGreedy.__call__(self, state, action_values)
-
 
 class Random(Policy):
     def __init__(self, actions):

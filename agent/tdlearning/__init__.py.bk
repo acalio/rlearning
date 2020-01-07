@@ -31,11 +31,12 @@ class TDAgent(Agent):
                 printProgressBar(e+1, episodes, prefix = 'Learning:', suffix = 'Complete', length = 50)
             
             done = False
-            observation = reset()
-            next_action = select_action(observation)
+            observation = self.env.reset()
+            # next_action = self.select_action(self.transformer.transform(observation))
+            next_action = self.select_action(observation)
             while not done:
                 action = next_action
-                next_observation, reward, done, _ = step(action)
+                next_observation, reward, done, _ = self.env.step(action)
 
                 if done:
                     next_observation, next_action = None, None
@@ -51,17 +52,6 @@ class TDAgent(Agent):
         
     @abstractmethod
     def _td_error(self, state, action, reward, next_state, next_action):
-        """
-        Compute the TD-Error
-       
-        Parameters:
-        -----------
-            state : current_state
-            action : current_action
-            reward : reward due to action a in state s
-            next_state : state next to state
-            next_action : action next_to
-        """
         pass
 
     @abstractmethod

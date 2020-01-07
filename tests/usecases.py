@@ -48,9 +48,20 @@ def extract_V(agent, env):
     
     return V_matrix
 
+
+def exract_approx_V(agent, env):
+    transf = agent.transformer
+    estimator = agent.estimator
+    player, dealer = env.observation_space.high
+    V_matrix = np.zeros((player, dealer))
+    for p in np.arange(0, player, 1):
+        for d in np.arange(0, dealer):
+            features = transf.transform(np.array([p,d]))
+            V_matrix[int(p), int(d)] = estimator(features)
+    return V_matrix, dealer, player
+
 def extract_Q(agent, env):
     player, dealer = env.observation_space.high
-    transf = agent.transformer
     Q_matrix = np.zeros((player, dealer, env.action_space.n))
     for k,v in agent.Q.items():
         state = tuple(agent.transformer.invtransform(k).astype(int) -1)

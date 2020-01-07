@@ -22,12 +22,12 @@ class Agent(ABC):
         self.policy = policy
 
     @abstractmethod
-    def learn(self, episodes):
+    def learn(self, num_of_episodes):
         """ Method to override with the learning algorithm
 
         Parameters
         ----------
-            episode : int, number of episodes
+            num_of_episodes : int, number of episodes
         """        
         pass
 
@@ -83,10 +83,25 @@ class Agent(ABC):
             return states, actions, rewards
         return episode
 
+    def _start_episode(self):
+        """ Callback to be called when at
+        the beginning of a new episode
+        """
+        pass
 
-class TabularAgent(Agent):
-    def __init__(self, env, discount_factor, transformer, policy):
-        super().__init__(env, discount_factor, transformer, policy)
+    def _update(self, greturn, state, action):
+        """ Update the estimates realted
+        to the given state and action pair, 
+        accordingly to the return
+
+        Parameters
+        ----------
+            greturn : current episode return
+            state : current state
+            action : current action
+        """
+        pass
+
 
 
 class ApproximationAgent(Agent):

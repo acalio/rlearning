@@ -33,11 +33,11 @@ class SARSA(TDAgent,ControlAgent):
         Compute the TD-Error
         Parameters:
         -----------
-            state : current_state 
-            action : current_action
-            reward : reward due to action a in state s
-            next_state : state next to state
-            next_action : action next_to
+            s : current_state (already transformed)
+            a : current_action
+            r : reward due to action a in state s
+            s_prime : state next to s (already transformed)
+            a_prime : action next_to
         """
         if next_state is not None:
             next_state = self.transformer.transform(next_state)
@@ -57,7 +57,7 @@ class SARSA(TDAgent,ControlAgent):
 
         Parameters
         ----------
-            state : current_state 
+            state : current_state (already transformed)
             action : current action
             td_error: td error
         """
@@ -68,11 +68,16 @@ class SARSA(TDAgent,ControlAgent):
 
 
     def select_action(self, state):
-        state = self.transformer.transform(state)
-        return self.policy(state, self._Q[state])
+        state_transformed = self.transformer.transform(state)
+        return self.policy(state, self._Q[state_transformed])
 
 
 
+class SARSAFA(SARSA, ApproximationAgent):
+    def __init__(self, env, discount_factor, transformer, policy, estimator, feature_converter, learning_rate, every_visit=False):
+
+    def __init__(self, env, discount_factor, transformer, policy, alpha, ):
+        pass
     
 
 
@@ -86,22 +91,20 @@ class ExpSARSA(SARSA):
         Compute the TD-Error
         Parameters:
         -----------
-            state : current_state 
-            action : current_action
-            reward : reward due to action a in state s
-            next_state : state next to s
-            next_action : action next_to
+            s : current_state (already transformed)
+            a : current_action
+            r : reward due to action a in state s
+            s_prime : state next to s (already transformed)
+            a_prime : action next_to
         """
         if next_state is None:
             exp_next_q = 0
         else:
-            next_state = self.transformer.transform(next_state)
             exp_next_q = np.dot(
-                self.policy.get_actions_probabilities(next_state, self._Q[next_state]), # probabilities
-                self._Q[next_state])                                # actions q-values
-
-        state = self.transformer.transform(state)
-        return reward + self.discount_factor * exp_next_q - self._Q[state][action]
+                self.policy.get_actions_probabilities(next_state, self.Q[next_state]), # probabilities
+                self.Q[next_state])                                # actions q-values
+        
+        return reward + self.discount_factor * exp_next_q - self.Q[state][action]
 
     
         
@@ -115,17 +118,27 @@ class QLearning(ControlAgent, TDAgent):
         self.state_action_visit = defaultdict(cz)
 
     def _td_error(self, state, action, reward, next_state, next_action):
+        """
+        Compute the TD-Error
+        Parameters:
+        -----------
+            s : current_state (already transformed)
+            a : current_action
+            r : reward due to action a in state s
+            s_prime : state next to s (already transformed)
+            a_prime : action next_to
+        """
         if next_state is None:
             next_max_q = 0
         else:
-            next_max_q = np.max(self._Q[next_state])
-        return reward + self.discount_factor * next_max_q - self._Q[state][action]
+            next_max_q = np.max(self.Q[next_state])
+        return reward + self.discount_factor * next_max_q - self.Q[state][action]
     
 
     def _update(self, state, action, td_error):
         self.state_action_visit[state][action] += 1
         self.alpha = 1/self.state_action_visit[state][action]
-        self._Q[state][action] += self.alpha * td_error
+        self.Q[state][action] += self.alpha * td_error
 
 
     def select_action(self, state):

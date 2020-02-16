@@ -14,7 +14,6 @@ class TDAgent(Agent):
         
         # create aliases
         select_action = self.select_action       
-        new_episode = self._start_episode
         reset = self.env.reset
         step = self.env.step
         td_error = self._td_error

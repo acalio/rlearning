@@ -16,6 +16,27 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.env = EnvFactory.getEnvironment('easy21-v0', 0)
         
+
+    def test1(self):
+        episodes = 10000
+        transf = LinearFeatureTransformer(2,2)
+        estimator = e.LinearEstimator(4)
+        eps = pol.EpsDecayGreedy(np.arange(self.env.action_space.n), 1000, HashTransformer() )
+        agent = MCControlFA(self.env, 1.0, HashTransformer(), eps, estimator, transf, 0.0001, every_visit=True)
+        info = agent.learn(episodes)
+        player, dealer = self.env.observation_space.high
+        V_matrix = np.zeros((player, dealer))
+        for p in np.arange(0, player, 1):
+            for d in np.arange(0, dealer):
+                values = [estimator(transf.transform(np.array([p,d]), action=i)) for i in range(self.env.action_space.n)]
+                V_matrix[int(p), int(d)] = np.max(values)
+        #plot_V(V_matrix, dealer, player)
+        
+        uc.play(agent, self.env, 100)
+    
+
+
+    """    
     @unittest.skip
     def test1(self):
         rpolicy = pol.Random([0,1])
@@ -81,4 +102,4 @@ class Test(unittest.TestCase):
         
         uc.play(agent, self.env, 100)
     
-    
+    """

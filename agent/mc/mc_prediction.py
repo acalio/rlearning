@@ -44,7 +44,7 @@ class MCPredictionFA(MCPredictionAgent, ApproximationAgent):
         featurize = self.feature_converter.transform
         estimate = self.estimator
 
-        values = [estimate(featurize(state, action=i)) for i in range(self.env.action_space.n)]
+        values = estimate(featurize(state))
         return self.policy(state, values)
 
     def _update(self, greturn, state, action):

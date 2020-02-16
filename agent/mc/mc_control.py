@@ -95,17 +95,17 @@ class MCControlFA(MCControlAgent, ApproximationAgent):
 
 
     def select_action(self, state):
-        #create aliases
-        featurize = self.feature_converter.transform
-        estimate = self.estimator
-
-        values = [estimate(featurize(state, action=i)) for i in range(self.env.action_space.n)]
+        values = self.estimator(self.feature_converter.transform(state))
         return self.policy(state, values)
 
     def _update(self, greturn, state, action):
-        state_action_feature = self.feature_converter.transform(state, action = action)
-        state_action_transformed = self.transformer.transform(state_action_feature)
-        self.state_action_visit[state_action_transformed] += 1
-        error = greturn - self.estimator(state_action_feature)
-        self._update_estimator(error, state_action_feature)
+        features = self.feature_converter.transform(state)
+        hashed_features = self.transformer.transform(features)
+        self.state_action_visit[hashed_features][action] += 1
+        error = greturn - self.estimator(features)
+        error[:action] = 0
+        error[action+1:] = 0
+        error = error.reshape(-1, 1)
+
+        self._update_estimator(error, features)
     

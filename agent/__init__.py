@@ -117,7 +117,7 @@ class ApproximationAgent(Agent):
                         
     def _update_estimator(self, error, state_feature):
         self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)
-        if np.all(np.isnan(self.estimator.w)):
+        if np.any(np.isnan(self.estimator.w) | np.isinf(self.estimator.w)): 
             raise RuntimeError("The weights got NaN! You may want to decrease the learning rate")
         
 
@@ -129,8 +129,6 @@ class PredictionAgent(Agent):
 
     def get_state_value_function(self, **kwargs):
         return self._V
-    
-
 
 
 class ControlAgent(Agent):

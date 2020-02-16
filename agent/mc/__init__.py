@@ -15,7 +15,7 @@ class MCAgent(Agent):
         
     def learn(self, num_of_episodes):
         """
-
+        Monte Carlo learning algorithm
         """
         # create aliases for performace reasons
         gen_ep = self.generate_episode

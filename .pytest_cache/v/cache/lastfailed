@@ -1,0 +1,11 @@
+{
+  "tests/control_test.py": true,
+  "tests/faagents_test.py": true,
+  "tests/nstep_prediction_test.py": true,
+  "tests/nstep_test.py": true,
+  "tests/offpolicy_test.py": true,
+  "tests/prediction_test.py": true,
+  "tests/state_transformer_test.py": true,
+  "tests/tdcontrol_test.py": true,
+  "tests/tdprediction_test.py": true
+}

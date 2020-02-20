@@ -115,10 +115,9 @@ class ApproximationAgent(Agent):
     def _get_target(self):
         pass
                         
-    def _update_estimator(self, error, state_feature):
-        self.estimator.w += self.alpha * error * self.estimator.get_derivative()(state_feature)
-        if np.any(np.isnan(self.estimator.w) | np.isinf(self.estimator.w)): 
-            raise RuntimeError("The weights got NaN! You may want to decrease the learning rate")
+    def _update_estimator(self, predicted, target):
+        self.estimator.compute_loss(predicted, target)
+        self.estimator.update_weights()
         
 
 
@@ -135,8 +134,10 @@ class ControlAgent(Agent):
 
     def __init__(self, env, discount_factor, transformer, policy):
         Agent.__init__(self, env, discount_factor, transformer, policy)
-        zeros = lambda : np.zeros(self.env.action_space.n)
+        self.number_of_actions = self.env.action_space.n
+        zeros = lambda : np.zeros(self.number_of_actions)
         self._Q = defaultdict(zeros)
+
 
     def get_state_value_function(self, **kwargs):
         """

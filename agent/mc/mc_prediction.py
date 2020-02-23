@@ -49,8 +49,9 @@ class MCPredictionFA(MCPredictionAgent, ApproximationAgent):
 
     def _update(self, greturn, state, action):
         state = self.transformer.transform(state)
-        error = greturn - self.estimator(state)
-        self._update_estimator(error, state)
+        predicted = self.estimator.predict(state)
+        self.estimator.compute_loss(greturn, predicted)
+        self.estimator.update_weights()
     
     def get_state_value_function(self, **kwargs):
         pass

@@ -2,18 +2,20 @@ from agent import ControlAgent, ApproximationAgent
 from agent.mc import MCAgent
 import numpy as np
 from collections import defaultdict
-from utils import printProgressBar
 
-class MCControlAgent(MCAgent,ControlAgent):
+
+class MCControlAgent(MCAgent, ControlAgent):
     """
     On-Policy first visit MC control (for \eps - soft policies)
     """
 
     def __init__(self, env, discount_factor, transformer, policy, every_visit=False):
+
         MCAgent.__init__(self, env, discount_factor, transformer, policy, every_visit)
         ControlAgent.__init__(self, env, discount_factor, transformer, policy)
 
-        self.state_action_visit = defaultdict(lambda : np.zeros(self.env.action_space.n))
+        self.state_action_visit = defaultdict(
+            lambda: np.zeros(self.env.action_space.n))
 
 
     def _update(self, greturn, state, action):

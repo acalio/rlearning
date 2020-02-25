@@ -49,13 +49,12 @@ class Test(unittest.TestCase):
                    save_Q=False,
                    save_V=False,
                    algo_kws=dict(episodes=episodes))
-    @unittest.skip
     def test3(self):
         episodes = 10000
         eps = EpsDecayGreedy(self.env.actions, 1000)
         lin = ft.LinearFeatureTransformer(self.env.observation_space.shape)
         state_shape, action_shape = lin.tranformed_shape, 2
-        es = e.LinearEstimator((*state_shape,action_shape))
+        es = e.LinearEstimator((*state_shape, action_shape), 0.001)
 
         agent = MCControlFA(self.env, 1.0, HashTransformer(), eps,es, lin, 0.001, every_visit=True)
         agent.learn(episodes)
@@ -63,17 +62,18 @@ class Test(unittest.TestCase):
         V_matrix = np.zeros((player, dealer))
         for p in np.arange(0, player, 1):
             for d in np.arange(0, dealer):
-                values = es(lin.transform(np.array([p,d])))
+                values = es.predict(lin.transform(np.array([p,d])))
                 V_matrix[int(p), int(d)] = max(values)
         plot_V(V_matrix, dealer, player)
 
 
     def test4(self):
-            episodes = 10000
+            episodes = 1000
             eps = EpsDecayGreedy(self.env.actions, 1000)
             lin = ft.PolynomialFeatureTransformer(self.env.observation_space.shape,3)
             state_shape, action_shape = lin.tranformed_shape(), 2
-            es = e.LinearEstimator((action_shape,*state_shape),weight_initialization='uniform')
+            es = e.LinearEstimator((*state_shape,action_shape), 0.000001)
+            #es = e.LinearEstimator((action_shape,*state_shape), 0.01, weight_initialization='uniform')
 
             agent = MCControlFA(self.env, 1.0, HashTransformer(), eps,es, lin,np.exp(-8), every_visit=True)
             agent.learn(episodes)
@@ -81,8 +81,9 @@ class Test(unittest.TestCase):
             V_matrix = np.zeros((player, dealer))
             for p in np.arange(0, player, 1):
                 for d in np.arange(0, dealer):
-                    values = es(lin.transform(np.array([p,d])))
+                    values = es.predict(lin.transform(np.array([p,d])))
                     V_matrix[int(p), int(d)] = max(values)
+            print(V_matrix)
             plot_V(V_matrix, dealer, player)
 
 

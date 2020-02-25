@@ -23,7 +23,7 @@ class Agent(ABC):
 
     @abstractmethod
     def learn(self, num_of_episodes):
-        """ Method to override with the learning algorithm
+        """ Method to override with the learning algorithmhttps://www.reddit.com/r/vscode/comments/bozngq/vscode_issues_with_python_and_pytorch/
 
         Parameters
         ----------
@@ -115,9 +115,8 @@ class ApproximationAgent(Agent):
     def _get_target(self):
         pass
                         
-    def _update_estimator(self, predicted, target):
-        self.estimator.compute_loss(predicted, target)
-        self.estimator.update_weights()
+    def _update_estimator(self, target, state, action=None):
+        self.estimator.update_weights(target, state, action)
         
 
 

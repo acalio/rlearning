@@ -62,6 +62,9 @@ class LinearEstimator(Estimator):
             # state-value function
             self.y_fn = lambda x: torch.dot(x, self.w)
             self.loss_fn = lambda pred, target: torch.sub(pred, target)
+        
+        #define the optimizer
+        self.opt = torch.optim.SGD([self.w], lr=self._learning_rate)
 
     def predict(self, state):
         return self.y_fn(state).detach().numpy()
@@ -78,22 +81,26 @@ class LinearEstimator(Estimator):
             return self.loss_fn(target, predicted, action)
 
     def update_weights(self, target, state, action=None):
-        #zero the gradient
-        if self.w.grad is not None:
-            self.w.grad.detach_()
-            self.w.grad.zero_()
-
-        #compute the value of the loss function
+        self.opt.zero_grad()
         self.loss_value = self.compute_loss(target, state, action)
-
-        #compute the gradient
         self.loss_value.backward()
+        self.opt.step()
+#         #zero the gradient
+#         if self.w.grad is not None:
+#             self.w.grad.detach_()
+#             self.w.grad.zero_()
 
-        #update the weights
-        self.w.data.sub_(self._learning_rate*self.loss_value*self.w.grad.data)
+#         #compute the value of the loss function
+#         self.loss_value = self.compute_loss(target, state, action)
 
-#        print(self.w.grad)
+#         #compute the gradient
+#         self.loss_value.backward()
 
-#        print(self.w.grad)
+#         #update the weights
+#         self.w.data.sub_(self._learning_rate*self.loss_value*self.w.grad.data)
+
+# #        print(self.w.grad)
+
+# #        print(self.w.grad)
 
 
